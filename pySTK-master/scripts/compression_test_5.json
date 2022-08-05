@@ -1,0 +1,217 @@
+{
+    "foresight-home": "/projects/exasky/VizAly-Foresight-Dev/",
+	"project-home": "/projects/groups/vizproject/dssdata/Exasky/compress_for_img/",
+	"wflow-path": "img-nyx-test-z5",
+
+	"input": 
+	{
+		"filetype": "NYX",
+		"filename": "/vast/home/wanyef/NVB_C009_l10n512_S12345T692_z5.h5",  
+
+
+		"group" : "native_fields",
+		"scalars": [ "baryon_density" ], 
+
+		"uncompressed": 
+		[
+		]
+	},
+
+    "data-reduction": 
+	{
+        "cbench-compressors" : 
+        [
+	    {
+                "name": "SZ",
+                "pw_rel" : 0.5,
+                "output-prefix" : "SZ_pwrel_0.5"
+            },
+            {
+                "name": "SZ",
+                "pw_rel" : 0.99,
+                "output-prefix" : "SZ_pwrel_0.99"
+	    },
+	    {
+                "name": "SZ",
+                "pw_rel" : 1.0,
+                "output-prefix" : "SZ_pwrel_1.0"
+            },
+	    {
+                "name": "SZ",
+                "pw_rel" : 5.0,
+                "output-prefix" : "SZ_pwrel_5.0"
+            },
+	    {
+                "name": "SZ",
+                "pw_rel" : 10.0,
+                "output-prefix" : "SZ_pwrel_10.0"
+            },
+            {
+                "name": "SZ",
+                "pw_rel" : 15.0,
+                "output-prefix" : "SZ_pwrel_15.0"
+	    },
+
+	    {
+                "name": "SZ",
+                "abs" : 0.5,
+                "output-prefix" : "SZ_abs_0.5"
+	    },		
+	    {
+                "name": "SZ",
+                "abs" : 0.75,
+                "output-prefix" : "SZ_abs_0.75"
+	    },		
+	    {
+                "name": "SZ",
+                "abs" : 1.0,
+                "output-prefix" : "SZ_abs_1.0"
+	    },		
+	    {
+                "name": "SZ",
+                "abs" : 2.0,
+                "output-prefix" : "SZ_abs_2.0"
+	    },	
+	    {
+                "name": "SZ",
+                "abs" : 5.0,
+                "output-prefix" : "SZ_abs_5.0"
+	    },		
+	    {
+                "name": "SZ",
+                "abs" : 10.0,
+                "output-prefix" : "SZ_abs_10.0"
+            },
+	    {
+                "name": "SZ",
+                "abs" : 20.0,
+                "output-prefix" : "SZ_abs_20.0"
+            },
+	    {
+                "name": "SZ",
+                "abs" : 30.0,
+                "output-prefix" : "SZ_abs_30.0"
+            },
+	    {
+                "name": "SZ",
+                "abs" : 40.0,
+                "output-prefix" : "SZ_abs_40.0"
+            },
+	
+            {
+                "name": "zfp",
+                "precision" : 0.5,
+                "output-prefix" : "zfp_prec_0.5"
+	    },		
+            {
+                "name": "zfp",
+                "precision" : 2,
+                "output-prefix" : "zfp_prec_2.0"
+			},
+            {
+                "name": "zfp",
+                "precision" : 5,
+                "output-prefix" : "zfp_prec_5.0"
+			},
+	    
+	    {
+                "name": "zfp",
+                "abs" : 0.25,
+                "output-prefix" : "zfp_abs_0.25"
+	    },
+	    {
+                "name": "zfp",
+                "abs" : 0.5,
+                "output-prefix" : "zfp_abs_0.5"
+	    },
+	    {
+                "name": "zfp",
+                "abs" : 1,
+                "output-prefix" : "zfp_abs_1.0"
+	    },
+	    {
+                "name": "zfp",
+                "abs" : 2,
+                "output-prefix" : "zfp_abs_2.0"
+	    },
+	    {
+                "name": "zfp",
+                "abs" : 5,
+                "output-prefix" : "zfp_abs_5.0"
+	    },
+	    {
+                "name": "zfp",
+                "abs" : 10,
+                "output-prefix" : "zfp_abs_10.0"
+	    },
+	    {
+                "name": "zfp",
+                "abs" : 20,
+                "output-prefix" : "zfp_abs_20.0"
+	    },
+	    {
+                "name": "zfp",
+                "abs" : 30,
+                "output-prefix" : "zfp_abs_30.0"
+	    },
+	    {
+                "name": "zfp",
+                "abs" : 40,
+                "output-prefix" : "zfp_abs_40.0"
+	    },
+	    {
+                "name": "zfp",
+                "abs" : 60,
+                "output-prefix" : "zfp_abs_60.0"
+	    },
+	    {
+                "name": "zfp",
+                "abs" : 100,
+                "output-prefix" : "zfp_abs_100.0"
+	    }
+        ],
+	
+
+	
+        "cbench-output": 
+        {
+            "run-path": "mpirun $foresight-home$build/CBench",
+
+            "output-decompressed": true,
+            "output-decompressed-location": "decompressed_files",
+
+            "log-file": "runlog_",
+            "metrics-file": "metrics_z5.hdf5"
+        },
+        
+        "cbench-metrics": 
+        [
+            {
+                "name": "absolute_error"
+            },
+
+            {
+                "name": "relative_error"
+            },
+
+            {
+                "name": "mse"
+            },
+
+            {
+                "name": "psnr"
+            }
+        ],
+
+        "name" : "cbench",
+        "path" : "mpirun $foresight-home$build/CBench",
+        "evn_path": "evn_scripts/VizAly-CBench.bash.darwin",
+        "configuration": {
+            "partition": "scaling",
+            "nodes": 1,
+            "ntasks-per-node": 1
+        },
+
+        "output-files": []
+    }
+}
