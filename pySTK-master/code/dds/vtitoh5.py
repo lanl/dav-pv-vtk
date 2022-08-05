@@ -22,7 +22,6 @@ def save_to_h5(grid_3d, h5filename, noexp=False):
     print("writing hdf5 file")
     exp_grid = grid_3d
     if not noexp:
-        print("exponent=======")
         exp_grid = np.exp(grid_3d)
     # h5filename = 'recons/' + args.dataset + '_' + args.samp_method + '_' + args.recon_method + args.tag + '.h5'
     # os.system("cp template.h5 ${0}".format(h5filename))

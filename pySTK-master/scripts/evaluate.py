@@ -27,9 +27,9 @@ def split_sample_filename(filename):
     parts = fname.split("_")
     print("filename: ", fname, " parts: ", parts)
     # halos NVB C009 l10n512 S12345T692 z5.hdf5 lcc True max 0.01
-    arguments = "_".join(parts[-3:])
-    algorithm = parts[-4]
-    dataset = parts[-5]
+    arguments = "_".join(parts[-4:])
+    algorithm = parts[-5]
+    dataset = parts[-6]
     return arguments, algorithm, dataset
 # End of split_sample_filename()
 

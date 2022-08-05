@@ -225,9 +225,7 @@ elif args.method == "hist_lcc":
 elif args.method == "random":
     stencil = random_sampling(args, vals_np, x, y, z, vtk_array_name, boundary_list, filename)
 elif args.method == "lcc":
-    stencil = lcc_sampling(args, dim, vals_np)
-elif args.method == "lcc_skip":
-    stencil = lcc_skip_sampling(args, dim, vals_np)  # , x, y, z, vtk_array_name, boundary_list, filename)
+    stencil = lcc_sampling(args, dim, vals_np)  # , x, y, z, vtk_array_name, boundary_list, filename)
 elif args.method == "mixed":
     stencil = fused_sampling(args, dim, vals_np)  # , x, y, z, vtk_array_name, boundary_list, filename, method1, method2, frac1)
 elif args.method == "max":
@@ -253,9 +251,9 @@ elif args.method == "complex_max_seeded_random_walk":
 else:
     print("Unknown sampling type. Exiting")
     
-if args.method not in ["hist_grad_rand"]:
-    polydata = stencil_to_vtk(stencil, vtk_array_name, x, y, z, vals_np, boundary_list, args.fill)
-    save_sample(polydata, filename, args.percentage, "{0}".format(args.method))
+
+polydata = stencil_to_vtk(stencil, vtk_array_name, x, y, z, vals_np, boundary_list, args.fill)
+save_sample(polydata, filename, args.percentage, "{0}".format(args.method))
 
 end = time.time()
 print("total time taken:", end - start)

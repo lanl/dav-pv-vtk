@@ -103,10 +103,6 @@ for k in range(ZDIM):
 print("interpolating")
 grid_z0 = griddata(feat_arr, data_vals, cur_loc, method=args.recon_method)
 grid_z0_3d = grid_z0.reshape((ZDIM, YDIM, XDIM))
-
-print("sampled stuff: {0} {1} {2}".format(np.min(data_vals), np.mean(data_vals), np.max(data_vals)))
-print("reconstructed stuff: {0} {1} {2}".format(np.min(grid_z0_3d), np.mean(grid_z0_3d), np.max(grid_z0_3d)))
-
 # write to a vti file
 output_filename = 'recons/' + args.dataset + '_' + args.samp_method + '_' + args.recon_method + args.tag + '.vti'
 print("writing reconstructed file to: ", output_filename)
@@ -141,4 +137,4 @@ else:
 writer.Write()
 
 h5filename = 'recons/' + args.dataset + '_' + args.samp_method + '_' + args.recon_method + args.tag + '.h5'
-save_to_h5(grid_z0_3d, h5filename, True)
+save_to_h5(grid_z0_3d, h5filename, False)

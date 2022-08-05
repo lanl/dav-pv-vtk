@@ -23,37 +23,6 @@
         [
 	    {
                 "name": "SZ",
-                "pw_rel" : 0.5,
-                "output-prefix" : "SZ_pwrel_0.5"
-            },
-            {
-                "name": "SZ",
-                "pw_rel" : 0.99,
-                "output-prefix" : "SZ_pwrel_0.99"
-	    },
-	    {
-                "name": "SZ",
-                "pw_rel" : 1.0,
-                "output-prefix" : "SZ_pwrel_1.0"
-            },
-	    {
-                "name": "SZ",
-                "pw_rel" : 5.0,
-                "output-prefix" : "SZ_pwrel_5.0"
-            },
-	    {
-                "name": "SZ",
-                "pw_rel" : 10.0,
-                "output-prefix" : "SZ_pwrel_10.0"
-            },
-            {
-                "name": "SZ",
-                "pw_rel" : 15.0,
-                "output-prefix" : "SZ_pwrel_15.0"
-	    },
-
-	    {
-                "name": "SZ",
                 "abs" : 0.5,
                 "output-prefix" : "SZ_abs_0.5"
 	    },		
@@ -97,22 +66,6 @@
                 "abs" : 40.0,
                 "output-prefix" : "SZ_abs_40.0"
             },
-	
-            {
-                "name": "zfp",
-                "precision" : 0.5,
-                "output-prefix" : "zfp_prec_0.5"
-	    },		
-            {
-                "name": "zfp",
-                "precision" : 2,
-                "output-prefix" : "zfp_prec_2.0"
-			},
-            {
-                "name": "zfp",
-                "precision" : 5,
-                "output-prefix" : "zfp_prec_5.0"
-			},
 	    
 	    {
                 "name": "zfp",

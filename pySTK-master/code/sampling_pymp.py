@@ -4,6 +4,7 @@ import argparse
 import copy
 import ctypes as c
 import importlib
+import itertools
 from pathlib import Path
 import pickle
 import shutil
@@ -17,6 +18,7 @@ import scipy.stats as ST
 import os
 import vtk
 from vtk.util import numpy_support as VN
+import zfpy
 
 from common import enum_dict
 from dds import graph_based_sampling as GS
@@ -97,8 +99,6 @@ def sample(args, block_data, blk_dims, grad, bid, sm, bm):
         fb_stencil = GS.gradient_lcc_sampling(args, blk_dims, block_data)
     elif args.method == 'lcc':
         fb_stencil = GS.lcc_sampling(args, blk_dims, block_data)
-    elif args.method == 'lcc_skip':
-        fb_stencil = GS.lcc_skip_sampling(args, blk_dims, block_data)
     elif args.method == 'lcc_rand':
         fb_stencil = GS.lcc_rand_sampling(args, blk_dims, block_data)
     elif args.method == 'max':
@@ -339,16 +339,29 @@ def run(infile, fb_sr, rand_sr, nthreads, ghist_params_list, args):
     os.system("rm -rf {0}".format(args.outpath))  # remove args.outpath first so the compression ratio is correct
     os.makedirs(args.outpath)
     print("writing sample info to: ", args.outpath)
-
+    block_num_sampled = np.asarray([len(points) for points in list_sampled_data], dtype=np.int16)
+    sampled_data_block_indices = np.cumsum(block_num_sampled)[:-1]  # used to split list_sampled_data for reconstruction
+    sampled_data_block_indices = zfpy.compress_numpy(sampled_data_block_indices)  # lossless compression
     dump_with_pickle(ghist_params_list[0:2], args.outpath + '/' + "ghist_params_list.pickle")
     dump_with_pickle(bm_paramter_list, args.outpath + '/' + "bm_paramter_list.pickle")
-    dump_with_pickle(list(list_sampled_lid), args.outpath + '/' + "list_sampled_lid.pickle")
-    dump_with_pickle(list(list_sampled_data), args.outpath + '/' + "list_sampled_data.pickle")
+    sampled_lids = np.asarray(list(itertools.chain.from_iterable(list_sampled_lid)), dtype=np.int32)
+    sampled_lids = zfpy.compress_numpy(sampled_lids)  # lossless compression for cell IDs
+    sampled_data = np.asarray(list(itertools.chain.from_iterable(list_sampled_data)), dtype=np.float32)
+    sampled_data = zfpy.compress_numpy(sampled_data, tolerance=args.tolerance)  # lossy compression for cell values
+    # dump_with_pickle(list(list_sampled_lid), args.outpath + '/' + "list_sampled_lid.pickle")
+    # dump_with_pickle(list(list_sampled_data), args.outpath + '/' + "list_sampled_data.pickle")
+    write_bytes(sampled_lids, args.outpath + "/" + "list_sampled_lid.npy")
+    # np.save(args.outpath + "/" + "list_sampled_lid.npy", sampled_lids)
+    write_bytes(sampled_data, args.outpath + "/" + "list_sampled_data.npy")
+    # np.save(args.outpath + "/" + "list_sampled_data.npy", sampled_data)
+    # TODO: all of these should be amenable to lossless compression. array_void_hist *may* be amenable to lossy compression
     np.asarray(array_void_hist).tofile(args.outpath + '/' + "array_void_hist.raw")
     np.asarray(array_ble).tofile(args.outpath + '/' + "array_ble.raw")
     np.asarray(array_delta).tofile(args.outpath + '/' + "array_delta.raw")
     np.save(args.outpath + '/' + "sampling_rate.npy", np.asarray(sampling_rate))
     np.save(args.outpath + '/' + "sampling_method_val.npy", np.asarray(sampling_method_val))
+    write_bytes(sampled_data_block_indices, args.outpath + "/" + "sampled_data_block_indices.npy")
+    # np.save(args.outpath + "/" + "sampled_data_block_indices.npy", sampled_data_block_indices)
 
     zip_folder = args.outpath + '_archive' + str(sampling_ratio) + '_' + args.method
     shutil.make_archive(zip_folder, 'zip', args.outpath)
@@ -359,6 +372,12 @@ def run(infile, fb_sr, rand_sr, nthreads, ghist_params_list, args):
     print('Total points stored:', np.sum(tot_points))
     print('Time taken %.2f secs' % (time.time() - t0))
 # End of run()
+
+
+def write_bytes(data, filename):
+    with open(filename, "wb") as f:
+        f.write(data)
+# End of write_bytes()
 
 
 if __name__ == "__main__":
@@ -388,6 +407,8 @@ if __name__ == "__main__":
     parser.add_argument("--store_corners", action="store_true", required=False, default=False,
                         help="""If true, will store the 8 corners of every sampled block. Causes significant overhead
                         at smaller sample sizes, but is needed for some reconstruction methods""")
+    parser.add_argument("--tolerance", action="store", type=float, default=0.0,
+                        help="The tolerance of zfpy compression for sampled values.")
 
     args = parser.parse_args()
 

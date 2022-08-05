@@ -20,6 +20,7 @@ import seaborn as sns
 from termcolor import colored
 import time
 import sys
+import zfpy
 
 sys.path.append('.')
 
@@ -237,105 +238,123 @@ def run_reconstruction(nthreads, recontype):
     return full_recon_data
 
 
+def read_bytes(filename):
+    with open(filename, "rb") as f:
+        data = f.read()
+    return data
+# End of read_bytes()
+
+
 # Main program
-parser = argparse.ArgumentParser()
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
 
-parser.add_argument('--sampledir', action="store", required=True, help="sampled data directory")
-parser.add_argument('--outputdir', action="store", required=False, help="output folder name")
-parser.add_argument('--recontype', action="store", required=False, help="specifiy the reconstruction method")
-parser.add_argument('--nthreads', action="store", required=False, help="how many threads to use")
-parser.add_argument('--vtiout', action="store_true", required=False, help="write out vti file?")
-parser.add_argument('--halos', action="store_true", required=False, default=False, help="run reeber halo finder?")
-parser.add_argument('--powerspectrum', action="store", required=False, help="run power spectrum computation?")
+    parser.add_argument('--sampledir', action="store", required=True, help="sampled data directory")
+    parser.add_argument('--outputdir', action="store", required=False, help="output folder name")
+    parser.add_argument('--recontype', action="store", required=False, help="specifiy the reconstruction method")
+    parser.add_argument('--nthreads', action="store", required=False, help="how many threads to use")
+    parser.add_argument('--vtiout', action="store_true", required=False, help="write out vti file?")
+    parser.add_argument('--halos', action="store_true", required=False, default=False, help="run reeber halo finder?")
+    parser.add_argument('--powerspectrum', action="store", required=False, help="run power spectrum computation?")
 
-args = parser.parse_args()
+    args = parser.parse_args()
 
-sampledir = getattr(args, 'sampledir')
-outputdir = getattr(args, 'outputdir')
-recontype = getattr(args, 'recontype')
-vtiout = getattr(args, 'vtiout')
-nthreads = getattr(args, 'nthreads')
-powerspectrum = getattr(args, 'powerspectrum')
+    sampledir = getattr(args, 'sampledir')
+    outputdir = getattr(args, 'outputdir')
+    recontype = getattr(args, 'recontype')
+    vtiout = getattr(args, 'vtiout')
+    nthreads = getattr(args, 'nthreads')
+    powerspectrum = getattr(args, 'powerspectrum')
 
-sampledir = str(Path(sampledir)) + '/'
+    sampledir = str(Path(sampledir)) + '/'
 
-if outputdir == None:
-    outputdir = str(Path(sampledir)) + '_reconstructed' + '/'
+    if outputdir == None:
+        outputdir = str(Path(sampledir)) + '_reconstructed' + '/'
 
-if powerspectrum == None:
-    powerspectrum = False
-else:
-    powerspectrum = bool(getattr(args, 'powerspectrum'))
+    if powerspectrum == None:
+        powerspectrum = False
+    else:
+        powerspectrum = bool(getattr(args, 'powerspectrum'))
 
-if vtiout == None:
-    vtiout = True
-else:
-    vtiout = bool(getattr(args, 'vtiout'))
+    if vtiout == None:
+        vtiout = True
+    else:
+        vtiout = bool(getattr(args, 'vtiout'))
 
-if nthreads == None:
-    nthreads = 6
-else:
-    nthreads = int(getattr(args, 'nthreads'))
+    if nthreads == None:
+        nthreads = 6
+    else:
+        nthreads = int(getattr(args, 'nthreads'))
 
-if recontype == None:
-    recontype = 1
-else:
-    recontype = int(getattr(args, 'recontype'))
+    if recontype == None:
+        recontype = 1
+    else:
+        recontype = int(getattr(args, 'recontype'))
 
-# set some global variables (TODO: need to store it separately)
-# vhist_nbins = 128
-# ghist_nbins = 512
-
-
-# read the sampling algorithm parameters
-# enum_dict = {'rand': 0, 'hist': 1, 'hist_grad': 2, 'hist_grad_rand': 3, 'grad': 4, 'lcc': 5}
-sampling_method_val = np.load(sampledir + "sampling_method_val.npy")
-sampling_rate = np.load(sampledir + "sampling_rate.npy")
-sampling_method = list(enum_dict.keys())[list(enum_dict.values()).index(sampling_method_val)]
-print('Sampling method and rate:', sampling_method, sampling_rate)
-
-# load partition parameters
-ghist_params_list = load_with_pickle(sampledir + "ghist_params_list.pickle")
-bm_paramter_list = load_with_pickle(sampledir + "bm_paramter_list.pickle")
-XBLOCK, YBLOCK, ZBLOCK = bm_paramter_list[0:3]
-XDIM, YDIM, ZDIM = bm_paramter_list[3:6]
-bm = FS.BlockManager('regular', bm_paramter_list)
-nob = bm.numberOfBlocks()
-print('processing total', nob, 'blocks')
-
-vhist_nbins = ghist_params_list[0]
-ghist_nbins = ghist_params_list[1]
-
-# blk_dims = ghist_params_list[2:]
+    # set some global variables (TODO: need to store it separately)
+    # vhist_nbins = 128
+    # ghist_nbins = 512
 
 
-# load sampled data
-list_sampled_lid = load_with_pickle(sampledir + "list_sampled_lid.pickle")
-list_sampled_data = load_with_pickle(sampledir + "list_sampled_data.pickle")
-array_void_hist = np.fromfile(sampledir + "array_void_hist.raw", dtype=int)
-array_void_hist = array_void_hist.reshape((nob, vhist_nbins))
-array_ble = np.fromfile(sampledir + "array_ble.raw")
-array_delta = np.fromfile(sampledir + "array_delta.raw")
+    # read the sampling algorithm parameters
+    # enum_dict = {'rand': 0, 'hist': 1, 'hist_grad': 2, 'hist_grad_rand': 3, 'grad': 4, 'lcc': 5}
+    sampling_method_val = np.load(sampledir + "sampling_method_val.npy")
+    sampling_rate = np.load(sampledir + "sampling_rate.npy")
+    sampling_method = list(enum_dict.keys())[list(enum_dict.values()).index(sampling_method_val)]
+    print('Sampling method and rate:', sampling_method, sampling_rate)
 
-# print("sampledir=", sampledir)
-# print("outputdir=", outputdir)
-# print("recontype=", recontype)
-# print("nthreads=", nthreads)
-# print("vtiout=", vtiout)
-# print("powerspectrum=", powerspectrum)
+    # load partition parameters
+    ghist_params_list = load_with_pickle(sampledir + "ghist_params_list.pickle")
+    bm_paramter_list = load_with_pickle(sampledir + "bm_paramter_list.pickle")
+    XBLOCK, YBLOCK, ZBLOCK = bm_paramter_list[0:3]
+    XDIM, YDIM, ZDIM = bm_paramter_list[3:6]
+    bm = FS.BlockManager('regular', bm_paramter_list)
+    nob = bm.numberOfBlocks()
+    print('processing total', nob, 'blocks')
 
-# run the reconstruction code
-full_recon_data = run_reconstruction(nthreads, recontype)
+    vhist_nbins = ghist_params_list[0]
+    ghist_nbins = ghist_params_list[1]
 
-# vti output needed?
-if vtiout:
-    write_vti_output(full_recon_data, str(Path(sampledir)), recontype)  # outputdir, recontype)
+    # blk_dims = ghist_params_list[2:]
 
-# halos = 1
-# halos via reeber needed?
-if args.halos:
-    reeber2_calculation(full_recon_data, outputdir + '_halo', recontype)
 
-# power spectrum via gimlet needed?
-if powerspectrum:
-    power_spectrum_calculation(full_recon_data)
+    # load sampled data
+    sampled_data_block_indices = read_bytes(sampledir + "sampled_data_block_indices.npy")
+    sampled_data_block_indices = zfpy.decompress_numpy(sampled_data_block_indices)
+    # sampled_lids = np.fromfile(sampledir + "list_sampled_lid.npy")
+    sampled_lids = read_bytes(sampledir + "list_sampled_lid.npy")
+    sampled_lids = zfpy.decompress_numpy(sampled_lids)
+    list_sampled_lid = np.split(sampled_lids, sampled_data_block_indices)
+    # list_sampled_lid = load_with_pickle(sampledir + "list_sampled_lid.pickle")
+    # sampled_data = np.fromfile(sampledir + "list_sampled_data.npy")
+    sampled_data = read_bytes(sampledir + "list_sampled_data.npy")
+    sampled_data = zfpy.decompress_numpy(sampled_data)
+    list_sampled_data = np.split(sampled_data, sampled_data_block_indices)
+    # list_sampled_data = load_with_pickle(sampledir + "list_sampled_data.pickle")
+    array_void_hist = np.fromfile(sampledir + "array_void_hist.raw", dtype=int)
+    array_void_hist = array_void_hist.reshape((nob, vhist_nbins))
+    array_ble = np.fromfile(sampledir + "array_ble.raw")
+    array_delta = np.fromfile(sampledir + "array_delta.raw")
+
+    # print("sampledir=", sampledir)
+    # print("outputdir=", outputdir)
+    # print("recontype=", recontype)
+    # print("nthreads=", nthreads)
+    # print("vtiout=", vtiout)
+    # print("powerspectrum=", powerspectrum)
+
+    # run the reconstruction code
+    full_recon_data = run_reconstruction(nthreads, recontype)
+
+    # vti output needed?
+    if vtiout:
+        write_vti_output(full_recon_data, str(Path(sampledir)), recontype)  # outputdir, recontype)
+
+    # halos = 1
+    # halos via reeber needed?
+    if args.halos:
+        reeber2_calculation(full_recon_data, outputdir + '_halo', recontype)
+
+    # power spectrum via gimlet needed?
+    if powerspectrum:
+        power_spectrum_calculation(full_recon_data)

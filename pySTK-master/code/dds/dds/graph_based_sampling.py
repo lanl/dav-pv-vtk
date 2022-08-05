@@ -225,6 +225,7 @@ def lcc_sampling(args, dim, vals_np):
     graph = ELLLikeGraph.from_cube_sparse(dim, vals_np, sparse)
     if graph.num_edges > 0:
         csr = graph.to_csr()
+        
         _, lcc_indices = get_largest_connected_component(csr, return_index=True)
     else:
         lcc_indices = np.asarray([], dtype=np.int32)
@@ -240,41 +241,6 @@ def lcc_sampling(args, dim, vals_np):
 
     return stencil
 # End of lcc_sampling
-
-
-def lcc_skip_sampling(args, dim, vals_np):
-    # vals_np holds the RTData values
-    # x,y,z hold the locations of these points
-    # now apply sampling algorithms
-    samples = np.size(vals_np)
-    stencil = np.zeros_like(vals_np)
-    prob_vals = np.zeros_like(vals_np)
-    rand_vals = np.zeros_like(vals_np)
-    frac = args.percentage
-    tot_samples = int(frac * samples)
-
-    if tot_samples == 0:
-        return stencil
-
-    sparse = tot_samples
-    graph = ELLLikeGraph.from_cube_skip_sparse(dim, vals_np, sparse)
-    if graph.num_edges > 0:
-        csr = graph.to_csr()
-        _, lcc_indices = get_largest_connected_component(csr, return_index=True)
-    else:
-        lcc_indices = np.asarray([], dtype=np.int32)
-    prob_vals[lcc_indices] = 1
-
-    # Fill sample slots not taken up by LCC with random points
-    if lcc_indices.size < tot_samples:
-        prob_vals = sample_contrast_points(args, np.arange(0, samples), tot_samples, vals_np, prob_vals,
-                                           lcc_indices.size)
-
-    rand_vals = np.random.random_sample(samples)
-    stencil[rand_vals < prob_vals] = 1
-
-    return stencil
-# End of lcc_skip_sampling
 
 
 def similarity_sampling(args, dim, vals_np):
