@@ -16,10 +16,11 @@ import pymp
 import scipy.stats as ST
 import os
 import vtk
-from vtk.util import numpy_support as VN
 
+
+from vtk.util import numpy_support as VN
 from common import enum_dict
-from dds import graph_based_sampling as GS
+
 import FeatureSampler as FS
 
 sys.path.append('.')
@@ -73,7 +74,6 @@ def sample_rates(nob, args, bm, data, blk_dims):
             block_sample_rates[block_sample_rates > 1.0] = 1.0
         print("final block sample rates: {0} {1} {2}".format(np.min(block_sample_rates), np.mean(block_sample_rates), np.max(block_sample_rates)))
         print("num fully sampled blocks: ", np.sum(block_sample_rates >= 1.0))
-        print("requested samples: ", np.sum(block_sample_rates * 16 * 16 * 16))
         print("num iterations = ", num_iterations)
     return block_sample_rates
 # End of sample_rates()
@@ -97,10 +97,6 @@ def sample(args, block_data, blk_dims, grad, bid, sm, bm):
         fb_stencil = GS.gradient_lcc_sampling(args, blk_dims, block_data)
     elif args.method == 'lcc':
         fb_stencil = GS.lcc_sampling(args, blk_dims, block_data)
-    elif args.method == 'lcc_skip':
-        fb_stencil = GS.lcc_skip_sampling(args, blk_dims, block_data)
-    elif args.method == 'lcc_rand':
-        fb_stencil = GS.lcc_rand_sampling(args, blk_dims, block_data)
     elif args.method == 'max':
         fb_stencil = GS.max_sampling(args, block_data)
     elif args.method == 'similarity':
@@ -121,20 +117,14 @@ def sample(args, block_data, blk_dims, grad, bid, sm, bm):
         fb_stencil = GS.complex_max_seeded_random_walk_sampling(args, blk_dims, block_data)
     else:
         print('Unknown sampling method; Not implemented yet.')
-    nsampled = np.sum(fb_stencil)
-    nexpected = int(args.percentage * block_data.size)
-    if not np.allclose(nsampled, nexpected):
-        print("ERROR: nsampled: {0} nexpected: {1}".format(nsampled, nexpected))
     return fb_stencil
 # End of sample()
 
 
-def stencil(bid, bm, block_data, block_sample_rate, blk_dims, grad, sm, rand_sr, store_corners):
+def stencil(bid, bm, block_data, block_sample_rates, blk_dims, grad, sm, rand_sr):
     if args.adaptive:
         myargs = copy.deepcopy(args)
-        if block_sample_rate > 1.0:
-            print("ERROR: block sample rate {0} > 1.0".format(block_sample_rate))
-        myargs.percentage = min(1.0, block_sample_rate)
+        myargs.percentage = min(1.0, block_sample_rates[bid])
         fb_stencil = sample(myargs, block_data, blk_dims, grad, bid, sm, bm)
     else:
         fb_stencil = sample(args, block_data, blk_dims, grad, bid, sm, bm)
@@ -142,37 +132,131 @@ def stencil(bid, bm, block_data, block_sample_rate, blk_dims, grad, sm, rand_sr,
 
     comb_stencil = fb_stencil + rand_stencil
     comb_stencil = np.where(comb_stencil > 1, 1, comb_stencil)
-    # assert np.sum(comb_stencil) == np.sum(fb_stencil)
 
     # pick at least one sample
     if np.sum(comb_stencil) == 0:
         comb_stencil[0] = 1
 
     # create boundary points
-    if args.store_corners:
-        dim = blk_dims
-        A = [0, dim[0] - 1]
-        B = [0, dim[1] - 1]
-        C = [0, dim[2] - 1]
-        j_vals = (((zval * dim[0] * dim[1]) + (yval * dim[0]) + xval) for xval in A for yval in B for zval in C)
-        j_list = np.asarray(list(j_vals))
-        comb_stencil[j_list] = 1
+    dim = blk_dims
+    A = [0, dim[0] - 1]
+    B = [0, dim[1] - 1]
+    C = [0, dim[2] - 1]
+    j_vals = (((zval * dim[0] * dim[1]) + (yval * dim[0]) + xval) for xval in A for yval in B for zval in C)
+    j_list = np.asarray(list(j_vals))
+    comb_stencil[j_list] = 1
     return comb_stencil
 # End of get_stencil()
 
 
-def process_block(bid, bm, data, block_sample_rate, blk_dims, grad, sm, list_sampled_lid, list_sampled_data, bd_dims):
+def process_block(bid, bm, data, block_sample_rates, blk_dims, grad, sm, list_sampled_lid, list_sampled_data, bd_dims):
     global tot_points
     global array_delta
     global array_ble
     global array_void_hist
-    global vhist_nbins
-    global store_corners
     block_data = bm.get_blockData(data, bid)
-    comb_stencil = stencil(bid, bm, block_data, block_sample_rate, blk_dims, grad, sm, 0.0, store_corners)
-    void_hist, ble, delta = sm.get_void_histogram(block_data, comb_stencil, vhist_nbins)
+    comb_stencil = stencil(bid, bm, block_data, block_sample_rates, blk_dims, grad, sm, 0.0)
+    void_hist, ble, delta = sm.get_void_histogram(block_data, comb_stencil, 16)
     sampled_lid, sampled_data = sm.get_samples(block_data, comb_stencil)
     
+
+    sampled_locs = np.where(comb_stencil > 0.5)[0]
+    list_sampled_lid[bid] = sampled_lid
+    list_sampled_data[bid] = sampled_data
+
+    #print(list_sampled_lid.shape)
+    #print(list_sampled_data.shape)
+
+    ncols = void_hist.size
+    array_void_hist[bid * ncols : (bid + 1) * ncols] = void_hist
+    array_ble[bid] = ble
+    array_delta[bid] = delta
+
+    # write out a vtp file
+    # now use this stencil array to store the locations
+    name = 'dm_density'
+    Points = vtk.vtkPoints()
+    if sampled_data.dtype == 'float64':
+        val_arr = vtk.vtkDoubleArray()
+    elif sampled_data.dtype == 'float32':
+        val_arr = vtk.vtkFloatArray()
+    val_arr.SetNumberOfComponents(1)
+    val_arr.SetName(name)
+
+    bd_idx = np.unravel_index(bid, bd_dims)
+    sampled_locs_xyz = np.unravel_index(sampled_locs, blk_dims)
+    pt_locs_np = np.add(np.transpose(sampled_locs_xyz), np.multiply(bd_idx, blk_dims))
+    pt_locs_np[:, [0, 2]] = pt_locs_np[:, [2, 0]]
+    #print(pt_locs_np)
+    Points.SetData(VN.numpy_to_vtk(pt_locs_np))
+
+    val_arr.SetArray(sampled_data, sampled_data.size, True)
+    val_arr.array = sampled_data
+
+    tot_points[bid] = sampled_data.size
+
+    polydata = vtk.vtkPolyData()
+    polydata.SetPoints(Points)
+
+    polydata.GetPointData().AddArray(val_arr)
+
+    # write the vtp file
+    writer = vtk.vtkXMLPolyDataWriter()
+    writer.SetFileName("vtu_outputs/sampled_" + args.method + '_pymp/' +
+                        "sampled_" + args.method + "_" + str(bid) + ".vtp")
+    if vtk.VTK_MAJOR_VERSION <= 5:
+        writer.SetInput(polydata)
+    else:
+        writer.SetInputData(polydata)
+    writer.Write()
+# End of process_blocks()
+
+
+############################### GNN Sampling ########################################
+
+def gnn_sample_from_block(block_data, sample_rate_block, bid, nodeScore):
+
+    block_rate = sample_rate_block[bid]*block_data.shape[0]
+    comb_stencil = np.zeros_like(block_data)
+    #print(block_data.shape[0] - int(block_rate))
+    #indices = np.random.choice(comb_stencil.shape[0], int(block_rate), replace = False)
+    #comb_stencil[indices] = 1
+    
+    if int(block_rate) != 0:
+        #Get top n nodes and their indices
+        indices = np.argpartition(nodeScore, nodeScore.shape[0] - int(block_rate))[nodeScore.shape[0] - int(block_rate):]
+        comb_stencil[indices] = 1
+    
+    return comb_stencil
+
+def gnn_process_block(bid, bm, data, blk_dims, sm, list_sampled_lid, list_sampled_data, bd_dims, block_score, sample_rate_block):
+    #bid = int(block_score[i, 0])
+    #bm = process_args[bid][1]
+    #data = process_args[bid][2]
+    #block_sample_rates = process_args[bid][3]
+    #blk_dims = process_args[bid][4]
+    #grad = process_args[bid][5]
+    #sm = process_args[bid][6]
+    #list_sampled_lid = process_args[bid][7]
+    #list_sampled_data = process_args[bid][8]
+    #bd_dims = process_args[bid][9]
+    global tot_points
+    global array_delta
+    global array_ble
+    global array_void_hist       
+    
+    block_data = bm.get_blockData(data, bid)  
+    nodeScore = block_score[bid, 4:]
+
+    comb_stencil = gnn_sample_from_block(block_data, sample_rate_block, bid, nodeScore)
+
+    # pick at least one sample
+    if np.sum(comb_stencil) == 0:
+        comb_stencil[0] = 1
+    
+    void_hist, ble, delta = sm.get_void_histogram(block_data, comb_stencil, 16)
+    sampled_lid, sampled_data = sm.get_samples(block_data, comb_stencil)
+
     sampled_locs = np.where(comb_stencil > 0.5)[0]
     list_sampled_lid[bid] = sampled_lid
     list_sampled_data[bid] = sampled_data
@@ -197,6 +281,7 @@ def process_block(bid, bm, data, block_sample_rate, blk_dims, grad, sm, list_sam
     sampled_locs_xyz = np.unravel_index(sampled_locs, blk_dims)
     pt_locs_np = np.add(np.transpose(sampled_locs_xyz), np.multiply(bd_idx, blk_dims))
     pt_locs_np[:, [0, 2]] = pt_locs_np[:, [2, 0]]
+    #print(pt_locs_np)
     Points.SetData(VN.numpy_to_vtk(pt_locs_np))
 
     val_arr.SetArray(sampled_data, sampled_data.size, True)
@@ -217,9 +302,66 @@ def process_block(bid, bm, data, block_sample_rate, blk_dims, grad, sm, list_sam
         writer.SetInput(polydata)
     else:
         writer.SetInputData(polydata)
-    writer.Write()
-# End of process_blocks()
+    writer.Write()  
 
+
+def gnn_sampling(process_args, tot_points, array_void_hist, array_ble, array_delta):
+    #process_args:
+    #bid, bm, data, block_sample_rates, blk_dims, grad, sm, list_sampled_lid, list_sampled_data, bd_dims
+    #0  , 1 ,  2  ,        3          ,     4   ,  5  ,  6,         7       ,         8        ,   9
+    
+    sample_rate = process_args[0][3]
+    stime = time.time()
+    #Load the block score
+    block_score = np.load('block_score.npy')
+    #Sort by block scores  
+    block_score = block_score[(block_score[:, 3]).argsort()[::-1]]
+    #Number of blocks
+    nBlocks = block_score[:,3].shape[0]
+    currentBlocksSum = nBlocks*sample_rate[0]
+    block_score_sum = np.sum(block_score[:,3])
+    sample_rate_block = np.zeros(nBlocks)
+    
+    for i in range(nBlocks):
+        sample_rate_current = min(currentBlocksSum/block_score_sum*block_score[i,3], 0.9)     
+        currentBlocksSum = currentBlocksSum - sample_rate_current
+        block_score_sum =  np.sum(block_score[i+1:,3])
+        bid = int(block_score[i, 0])
+
+        sample_rate_block[bid] = sample_rate_current
+    
+    #Sorting the block scores by bid
+    block_score = block_score[(block_score[:, 0]).argsort()] 
+    print("Time taken for block scoring: "+str(time.time() - stime))
+    
+    
+    sampling_args = []
+
+    for i in range(block_score.shape[0]):
+        bid = int(block_score[i, 0])
+        bm = process_args[bid][1]
+        data = process_args[bid][2]
+        blk_dims = process_args[bid][4]
+        sm = process_args[bid][6]
+        list_sampled_lid = process_args[bid][7]
+        list_sampled_data = process_args[bid][8]
+        bd_dims = process_args[bid][9]  
+   
+        sampling_args.append((
+            bid, bm, data, blk_dims, sm, list_sampled_lid, list_sampled_data, bd_dims, block_score, sample_rate_block
+        ))
+
+    def init_arrays(tot_points, array_void_hist, array_ble, array_delta):
+        globals()['tot_points'] = tot_points
+        globals()['array_void_hist'] = array_void_hist
+        globals()['array_ble'] = array_ble
+        globals()['array_delta'] = array_delta
+    
+    with mp.Pool(nthreads, initializer=init_arrays, initargs=(tot_points, array_void_hist, array_ble, array_delta)) as pool:
+            pool.starmap(gnn_process_block, sampling_args)
+            
+############################### GNN Sampling Ends ########################################
+        
 
 def run(infile, fb_sr, rand_sr, nthreads, ghist_params_list, args):
     print('Reading data.')
@@ -298,19 +440,21 @@ def run(infile, fb_sr, rand_sr, nthreads, ghist_params_list, args):
     process_args = list()
     for bid in range(nob):
         process_args.append((
-            bid, bm, data, block_sample_rates[bid], blk_dims, grad, sm, list_sampled_lid, list_sampled_data, bd_dims
+            bid, bm, data, block_sample_rates, blk_dims, grad, sm, list_sampled_lid, list_sampled_data, bd_dims
         ))
-    
+
     def init_arrays(tot_points, array_void_hist, array_ble, array_delta):
         globals()['tot_points'] = tot_points
         globals()['array_void_hist'] = array_void_hist
         globals()['array_ble'] = array_ble
         globals()['array_delta'] = array_delta
-        globals()['vhist_nbins'] = vhist_nbins
-        globals()['store_corners'] = args.store_corners
 
-    with mp.Pool(nthreads, initializer=init_arrays, initargs=(tot_points, array_void_hist, array_ble, array_delta)) as pool:
-        pool.starmap(process_block, process_args)
+    #GNN sampling + prediction serially
+    if args.method == 'gnn':
+        gnn_sampling(process_args, tot_points, array_void_hist, array_ble, array_delta)
+    else:
+        with mp.Pool(nthreads, initializer=init_arrays, initargs=(tot_points, array_void_hist, array_ble, array_delta)) as pool:
+            pool.starmap(process_block, process_args)
 
     tot_points = np.asarray(tot_points[:], dtype=np.int32)
     array_void_hist = np.asarray(array_void_hist[:], dtype=np.int64).reshape((nob, vhist_nbins))
@@ -369,11 +513,11 @@ if __name__ == "__main__":
     parser.add_argument('--percentage', action="store", type=np.float32, default=0.01, required=False,
                         help="what fraction of samples to keep")
     parser.add_argument('--nbins', action="store", type=int, required=False, default=32, help="how many bins to use")
-    parser.add_argument('--blk_dims', action="store", type=int, default=10, required=False, 
+    parser.add_argument('--blk_dims', action="store", required=False,
                         help="block dimensions. Supporting cubing blocks for now. blk_dim --> [blk_dim,blk_dim,blk_dim] ")
-    parser.add_argument('--nthreads', action="store", type=int, required=False, default=4, help="how many threads to use")
-    parser.add_argument('--method', action="store", type=str, default="hist", required=False,
-                        help="which sampling method to use. hist, grad, hist_grad, random, mixed, lcc, lcc_rand")
+    parser.add_argument('--nthreads', action="store", type=int, required=False, default=8, help="how many threads to use")
+    parser.add_argument('--method', action="store", required=True,
+                        help="which sampling method to use. hist, grad, hist_grad, random, mixed")
     parser.add_argument("--contrast_points", action="store", required=False, type=float, default=0.00,
                         help="The amount of low value points to include for contrast purposes. Default is 0.00 or 0 percent of the total sampled points.")
     parser.add_argument("--sparse", action="store", required=False, default=0.25, type=float,
@@ -384,21 +528,28 @@ if __name__ == "__main__":
     parser.add_argument("--function", action="store", type=str, default="entropy", 
                         help="""The function to use to assign weights for adaptive sampling. [max, min, entropy].
                                 For min and entropy, more samples are taken from blocks with lower values""")
-    parser.add_argument("--void_hist_nbins", type=int, default=16, help="how many void histogram bins to use. more bins = more overhead, but more accurate reconstruction")
-    parser.add_argument("--store_corners", action="store_true", required=False, default=False,
-                        help="""If true, will store the 8 corners of every sampled block. Causes significant overhead
-                        at smaller sample sizes, but is needed for some reconstruction methods""")
 
     args = parser.parse_args()
 
     infile = getattr(args, 'input')
+    sampling_ratio = args.percentage
     nthreads = getattr(args, 'nthreads')
     nbins = getattr(args, 'nbins')
+    nblk_dims = getattr(args, 'blk_dims')
+
     method = getattr(args, 'method')
 
-    nblk_dims = args.blk_dims
     sampling_ratio = args.percentage
+
+    if method == None:
+        method = 'hist'
+
     nthreads = args.nthreads
+
+    if nblk_dims == None:
+        nblk_dims = 10
+    else:
+        nblk_dims = int(getattr(args, 'blk_dims'))
 
     if args.outpath == None:
         args.outpath = str(Path("sampled_output_{0}_{1}_{2}_{3}".format(
@@ -408,6 +559,6 @@ if __name__ == "__main__":
     if args.method == 'similarity':
         print("WARNING: similarity method has a bug with inf values and may not work")
 
-    ghist_params_list = [args.void_hist_nbins, args.void_hist_nbins, nblk_dims, nblk_dims, nblk_dims]
+    ghist_params_list = [16, 16, nblk_dims, nblk_dims, nblk_dims]
     print(args)
     run(infile, sampling_ratio, 0.0, nthreads, ghist_params_list, args)

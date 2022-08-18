@@ -12,7 +12,7 @@ import random
 from numpy import linalg as LA
 
 from sklearn.neighbors import NearestNeighbors
-from sknetwork.topology.structure import get_largest_connected_component
+#from sknetwork.topology.structure import get_largest_connected_component
 from scipy.interpolate import griddata
 import naturalneighbor
 
@@ -1052,10 +1052,10 @@ class ReconstructionManager(object):
 
         np.put(recon_block, sampled_lid, sampled_data)
 
-        # nan_count = np.sum(np.isnan(recon_block))
+        nan_count = np.sum(np.isnan(recon_block))
         nan_location = np.where(np.isnan(recon_block))[0]
 
-        if not np.size(nan_location):  # if no empty cells, return block
+        if not np.size(nan_location):
             return recon_block
 
         #create void histogram 
@@ -1063,7 +1063,7 @@ class ReconstructionManager(object):
         vhist[0] = vhist_count
         v_nbins = np.size(vhist[0])
         vhist[1] = np.arange(v_nbins+1,)
-        vhist[1] = vhist[1] * vhist_delta + vhist_ble  # vhist_bin_left_edges
+        vhist[1] = vhist[1]*vhist_delta + vhist_ble 
 
         bins = vhist[1]
         
@@ -1091,11 +1091,11 @@ class ReconstructionManager(object):
         #print(vhist_count, np.sum(vhist_count))
 
         # digitize the NNs to later lookup
-        t_xids = np.digitize(NNs, vhist[1])
-        t_xids -= 1
-        t_xids[t_xids >= v_nbins] = v_nbins - 1
+        t_xids = np.digitize(NNs,vhist[1])
+        t_xids-=1
+        t_xids[t_xids>=v_nbins]=v_nbins-1
 
-        # runs, vals = rle(t_xids)
+        runs, vals = rle(t_xids)
 
         ## in a for loop
         for ind in sorted_sequence:

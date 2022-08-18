@@ -326,10 +326,12 @@ array_delta = np.fromfile(sampledir + "array_delta.raw")
 
 # run the reconstruction code
 full_recon_data = run_reconstruction(nthreads, recontype)
+print("done")
 
 # vti output needed?
-if vtiout:
-    write_vti_output(full_recon_data, str(Path(sampledir)), recontype)  # outputdir, recontype)
+#if vtiout:
+#    (print("done"))
+write_vti_output(full_recon_data, str(Path(sampledir)), recontype)  # outputdir, recontype)
 
 # halos = 1
 # halos via reeber needed?

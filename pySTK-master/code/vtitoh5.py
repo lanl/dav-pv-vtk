@@ -22,7 +22,6 @@ def save_to_h5(grid_3d, h5filename, noexp=False):
     print("writing hdf5 file")
     exp_grid = grid_3d
     if not noexp:
-        print("exponent=======")
         exp_grid = np.exp(grid_3d)
     # h5filename = 'recons/' + args.dataset + '_' + args.samp_method + '_' + args.recon_method + args.tag + '.h5'
     # os.system("cp template.h5 ${0}".format(h5filename))
@@ -51,6 +50,9 @@ if __name__ == "__main__":
     name = data.GetPointData().GetArrayName(0)
     vals = data.GetPointData().GetArray(name)
     vals_np = VN.vtk_to_numpy(vals)
+    print(np.shape(vals_np))
+    print(np.min(vals_np))
+    print(np.max(vals_np))
     grid_3d = vals_np.reshape(dim)
     h5filename = args.infile[:-4] + ".h5"
 

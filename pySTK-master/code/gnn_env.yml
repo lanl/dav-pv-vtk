@@ -86,7 +86,6 @@ dependencies:
   - libxml2=2.9.12=h03d6c58_0
   - lz4-c=1.8.1.2=h14c3975_0
   - markupsafe=2.1.1=py37h7f8727e_0
-  - matplotlib-base=3.5.1=py37ha18d171_1
   - matplotlib-inline=0.1.2=pyhd3eb1b0_2
   - mistune=0.8.4=py37h14c3975_1001
   - munkres=1.1.4=py_0
@@ -143,7 +142,6 @@ dependencies:
   - tornado=6.1=py37h27cfd23_0
   - tqdm=4.64.0=py37h06a4308_0
   - traitlets=5.1.1=pyhd3eb1b0_0
-  - typing_extensions=4.1.1=pyh06a4308_0
   - wcwidth=0.2.5=pyhd3eb1b0_0
   - webencodings=0.5.1=py37_1
   - wheel=0.37.0=pyhd3eb1b0_1
@@ -176,14 +174,25 @@ dependencies:
     - numba==0.55.2
     - param==1.12.2
     - pillow==9.1.1
+    - psutil==5.9.1
     - pymp-pypi==0.5.0
     - pyparsing==3.0.9
+    - requests==2.28.1
     - scikit-network==0.26.0
+    - torch==1.12.1+cu113
+    - torch-cluster==1.6.0
+    - torch-geometric==2.1.0
+    - torch-scatter==2.0.9
+    - torch-sparse==0.6.15
+    - torch-spline-conv==1.2.1
+    - torchaudio==0.12.1+cu113
+    - torchvision==0.13.1+cu113
     - twisted==22.4.0
     - txaio==22.2.1
     - typing-extensions==4.2.0
+    - urllib3==1.26.11
     - vtk==9.0.3
     - wslink==1.6.5
     - yarl==1.7.2
     - zope-interface==5.4.0
-prefix: /vast/home/wanyef/.conda/envs/intellSampler
+prefix: /vast/home/sonalj/.conda/envs/intellSampler
