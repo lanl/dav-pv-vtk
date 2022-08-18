@@ -9,7 +9,7 @@ salloc -p clx-turing (an example of GPU allocation)
 If on darwin, use the installation script provided to download dependencies (Reeber) as well as to copy a set of NYX datasets.
 
 ```
-cd code
+cd gnn
 module load cmake/3.22.2module load openmpi
 bash setup.sh
 ```
