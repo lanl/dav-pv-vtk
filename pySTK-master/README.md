@@ -1,4 +1,4 @@
-# GNNassisted_Sampling (Readme still in construction)
+# GNNassisted_Sampling
 
 This is PyTorch-geometric based Grah Neural Network (GNN) implementation for GNN-assisted sampling. The GNN provides importance scores to blocks of input data (Nyx cosmology simulation dataset) based on the presence of Halos in them thereby telling which blocks are more important than the others for sampling.  
 TO DO: Add modified pystk library to perform sampling and reconstruction in parallel on the input blocks.
