@@ -2,9 +2,13 @@ from vtkmodules.vtkCommonDataModel import vtkDataSet
 from vtkmodules.util.vtkAlgorithm import VTKPythonAlgorithmBase
 from vtkmodules.numpy_interface import dataset_adapter as dsa
 from vtkmodules.vtkGeovisCore import vtkGeoProjection, vtkGeoTransform
-from pyproj import Transformer
+try:
+    from pyproj import Transformer
+except:
+    print("The pyproj library is not installed. Install the pyproj library to be able to put the data set on a sphere.")
+#from pyproj import Transformer
 
-import pyproj
+#import pyproj
 import math
 import copy
 
@@ -34,9 +38,23 @@ class GeoLatLonReproject(VTKPythonAlgorithmBase):
 
         # Set the default availableArrays value to an empty string
         self._availableArrays = ""
+        
+        # Test to see if pyproj can be imported. If it can, include the
+        # sphere as a possible projection, otherwise remove the sphere
+        # from the possible projections to choose from.
+        try:
+            from pyproj import Transformer
+            #import pyproj
+            #print("Pyproj was successfully able to be imported.")
+            # Create a list of common map projections to choose from
+            self._mapProjectionList = ["Robinson", "Mercator", "Northern Hemisphere Stereographic", "Southern Hemisphere Stereographic", "Lambert Conformal Conic", "Sphere"]
+        except:
+            print("Pyproj was not able to be imported.")
+            # Create a list of common map projections to choose from
+            self._mapProjectionList = ["Robinson", "Mercator", "Northern Hemisphere Stereographic", "Southern Hemisphere Stereographic", "Lambert Conformal Conic"]
 
         # Create a list of common map projections to choose from
-        self._mapProjectionList = ["Robinson", "Mercator", "Northern Hemisphere Stereographic", "Southern Hemisphere Stereographic", "Lambert Conformal Conic", "Sphere"]
+        #self._mapProjectionList = ["Robinson", "Mercator", "Northern Hemisphere Stereographic", "Southern Hemisphere Stereographic", "Lambert Conformal Conic", "Sphere"]
         
         # Set the default sphereRadius value to 0
         #self.sphereRadius = 0
@@ -462,7 +480,7 @@ class GeoLatLonReproject(VTKPythonAlgorithmBase):
         try:
             vtkPts = vtkDataSet.GetPoints()
         except:
-            print("The data set is not a vtk structured grid")
+            #print("The data set is not a vtk structured grid")
             numPoints = vtkDataSet.GetNumberOfPoints()
             for i in range(numPoints):
                 point = vtkDataSet.GetPoint(i)
@@ -484,8 +502,8 @@ class GeoLatLonReproject(VTKPythonAlgorithmBase):
 
         # If the user chooses the Robinson, Mercator or Lambert Conformal Conic projection,
         # then set the columnAtEnd variable to zero
-        if (((self.projection == "Robinson") or (self.projection == "Mercator") or (self.projection == "Lambert Conformal Conic"))):
-             self.columnAtEnd = 0
+        #if (((self.projection == "Robinson") or (self.projection == "Mercator") or (self.projection == "Lambert Conformal Conic"))):
+             #self.columnAtEnd = 0
 
         # Check that the Central Meridian At Zero checkbox is checked, and if it
         # is, then alter the input data set so that it is centered at zero
@@ -511,7 +529,7 @@ class GeoLatLonReproject(VTKPythonAlgorithmBase):
         else:
             inputDataSet2 = inputDataSet1
         
-        if (self.GetColumnAtEnd() == True):
+        if (self.GetColumnAtEnd() == True) and (((self.projection != "Robinson") and (self.projection != "Mercator") and (self.projection != "Lambert Conformal Conic"))):
             inputDataSet0 = self.AddColumnToEnd(inputDataSet2)
         else:
             inputDataSet0 = inputDataSet2
@@ -561,7 +579,8 @@ class GeoLatLonReproject(VTKPythonAlgorithmBase):
         # put them in newPoints
         #oldPointsArray = inputDataSet0.GetPoints()
         oldPointsArray = self.GetPoints(inputDataSet0)
-        if (((self.projection == "Robinson") or (self.projection == "Mercator") or (self.projection == "Sphere")) and (self.GetCentralMeridian() != True) and (self.GetColumnAtEnd() != True)):
+        #if (((self.projection == "Robinson") or (self.projection == "Mercator") or (self.projection == "Sphere")) and (self.GetCentralMeridian() != True) and (self.GetColumnAtEnd() != True)):
+        if ((((self.projection == "Robinson") or (self.projection == "Mercator")) and (self.GetCentralMeridian() != True)) or ((self.projection == "Sphere") and (self.GetColumnAtEnd() != True) and (self.GetCentralMeridian() != True))):
             #oldPoints = inputDataSet0.VTKObject.GetPoints()
             oldPoints = self.GetPoints(inputDataSet0.VTKObject)
         else:
